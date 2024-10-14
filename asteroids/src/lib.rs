@@ -21,13 +21,14 @@ struct Game;
 impl Plugin for Game {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, add_player)
-            .add_systems(Update, (move_dirction));
+            .add_systems(Update, move_direction);
     }
 }
 
 #[derive(Component)]
 struct Ship {
-    speed: f32
+    speed: f32,
+    rotate_speed: f32,
 }
 
 fn add_player(
@@ -56,10 +57,10 @@ fn add_player(
         mesh: shape,
         material: materials.add(color),
         ..Default::default()
-    }, Ship{speed: 200.0}));
+    }, Ship{speed: 200.0, rotate_speed: 1.0}));
 }
 
-fn move_dirction(time: Res<Time>,
+fn move_direction(time: Res<Time>,
                 mut keyboard: Res<ButtonInput<KeyCode>>,
                 mut query: Query<(&mut Transform, &Ship)>) {
         for (mut transform, ship) in query.iter_mut() {
@@ -91,6 +92,6 @@ fn move_dirction(time: Res<Time>,
 
         transform.translation.x += direction.x * ship.speed * time.delta_seconds();
         transform.translation.y += direction.y * ship.speed * time.delta_seconds();
-            transform.rotate_local_z(angle * time.delta_seconds());
+        transform.rotate_local_z(angle * ship.rotate_speed * time.delta_seconds());
     }
 }
