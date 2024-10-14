@@ -1,13 +1,14 @@
+use std::ops::{Add, Sub};
 use bevy::app::{App, Startup, Update};
 use bevy::asset::Assets;
 use bevy::DefaultPlugins;
 use bevy::ecs::query::QueryEntityError;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::math::{vec2, Vec2};
-use bevy::prelude::{Camera2dBundle, Color, ColorMaterial, Commands, Component, EventReader, LightGizmoColor, Mesh, MeshBuilder, Plugin, Query, Res, ResMut, Transform, Triangle2d, With};
+use bevy::prelude::{ButtonInput, Camera2dBundle, Color, ColorMaterial, Commands, Component, EventReader, KeyCode, LightGizmoColor, Mesh, MeshBuilder, Plugin, Quat, Query, Res, ResMut, Transform, Triangle2d, Vec3, With};
 use bevy::render::mesh::CircleMeshBuilder;
 use bevy::sprite::{MaterialMesh2dBundle, Mesh2dHandle};
-use bevy::time::Time;
+use bevy::time::{Time, Timer};
 
 pub fn run() {
     App::new()
@@ -20,12 +21,14 @@ struct Game;
 impl Plugin for Game {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, add_player)
-            .add_systems(Update, (mesh_movement, move_dirction));
+            .add_systems(Update, (move_dirction));
     }
 }
 
 #[derive(Component)]
-struct Position(f32, f32);
+struct Ship {
+    speed: f32
+}
 
 fn add_player(
     mut commands: Commands,
@@ -53,18 +56,41 @@ fn add_player(
         mesh: shape,
         material: materials.add(color),
         ..Default::default()
-    }, Position(0.0,0.0)));
+    }, Ship{speed: 200.0}));
 }
 
-fn mesh_movement(time: Res<Time>, mut mesh_position: Query<(&mut Transform, &Position)>) {
-    for (mut transform, position) in &mut mesh_position {
-        transform.translation.x += position.0;
-        transform.translation.y += position.1;
-    }
-}
+fn move_dirction(time: Res<Time>,
+                mut keyboard: Res<ButtonInput<KeyCode>>,
+                mut query: Query<(&mut Transform, &Ship)>) {
+        for (mut transform, ship) in query.iter_mut() {
+            let mut direction = Vec2::ZERO;
+            let mut angle = 0.0;
 
-fn move_dirction(mut keybordevent: EventReader<KeyboardInput>) {
-    for event in keybordevent.read() {
-        println!("{:?}", event);
+            if keyboard.pressed(KeyCode::ArrowLeft) {
+                direction.x -= 1.0;
+            }
+            else if keyboard.pressed(KeyCode::ArrowRight) {
+                direction.x += 1.0;
+            }
+            else if keyboard.pressed(KeyCode::ArrowUp) {
+                direction.y += 1.0;
+            }
+            else if keyboard.pressed(KeyCode::ArrowDown) {
+                direction.y -= 1.0;
+            }
+            else if keyboard.pressed(KeyCode::KeyS) {
+                angle = 1.0;
+            }
+            else if keyboard.pressed(KeyCode::KeyD) {
+                angle = -1.0;
+            }
+
+        if direction.length() > 0.0 {
+            direction = direction.normalize();
+        }
+
+        transform.translation.x += direction.x * ship.speed * time.delta_seconds();
+        transform.translation.y += direction.y * ship.speed * time.delta_seconds();
+            transform.rotate_local_z(angle * time.delta_seconds());
     }
 }
