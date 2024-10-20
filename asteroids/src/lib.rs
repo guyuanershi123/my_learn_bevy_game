@@ -21,7 +21,7 @@ struct Game;
 impl Plugin for Game {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, add_player)
-            .add_systems(Update, move_direction);
+            .add_systems(Update, (move_direction, rotate_ship, thrust_ship));
     }
 }
 
@@ -62,36 +62,46 @@ fn add_player(
 
 fn move_direction(time: Res<Time>,
                 mut keyboard: Res<ButtonInput<KeyCode>>,
-                mut query: Query<(&mut Transform, &Ship)>) {
-        for (mut transform, ship) in query.iter_mut() {
-            let mut direction = Vec2::ZERO;
-            let mut angle = 0.0;
-
+                mut query: Query<(&mut Transform, &mut Ship)>) {
+        for (mut transform, mut ship) in query.iter_mut() {
             if keyboard.pressed(KeyCode::ArrowLeft) {
-                direction.x -= 1.0;
+                ship.rotate_speed -= 1.0;
             }
             else if keyboard.pressed(KeyCode::ArrowRight) {
-                direction.x += 1.0;
+                ship.rotate_speed += 1.0;
             }
             else if keyboard.pressed(KeyCode::ArrowUp) {
-                direction.y += 1.0;
+                ship.speed += 1.0;
+                ship.rotate_speed = 0.0;
             }
             else if keyboard.pressed(KeyCode::ArrowDown) {
-                direction.y -= 1.0;
+                ship.speed -= 1.0;
+                ship.speed = 0.0;;
             }
-            else if keyboard.pressed(KeyCode::KeyS) {
-                angle = 1.0;
-            }
-            else if keyboard.pressed(KeyCode::KeyD) {
-                angle = -1.0;
+            else{
+                ship.rotate_speed = 0.0;
+                ship.speed = 0.0;
             }
 
-        if direction.length() > 0.0 {
-            direction = direction.normalize();
+        ship.rotate_speed = ship.rotate_speed.clamp(-5.0, 5.0);
+            ship.speed = ship.speed.clamp(0.0, 5.0);
+    }
+}
+
+fn rotate_ship(time: Res<Time>, mut query: Query<(&mut Transform, &Ship)>) {
+    for (mut transform, ship) in query.iter_mut() {
+        dbg!(ship.rotate_speed);
+        transform.rotate_z(ship.rotate_speed * time.delta_seconds());
+    }
+}
+
+fn thrust_ship(time: Res<Time>, mut query: Query<(&mut Transform, &Ship)>) {
+    for (mut transform, ship) in query.iter_mut() {
+        if ship.speed > 0.0 {
+            let direction = transform.rotation * Vec3::Y;
+            let mut vec = ship.speed * direction;
+            vec = vec.normalize();
+            transform.translation += vec;
         }
-
-        transform.translation.x += direction.x * ship.speed * time.delta_seconds();
-        transform.translation.y += direction.y * ship.speed * time.delta_seconds();
-        transform.rotate_local_z(angle * ship.rotate_speed * time.delta_seconds());
     }
 }
