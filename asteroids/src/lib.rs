@@ -5,10 +5,11 @@ use bevy::DefaultPlugins;
 use bevy::ecs::query::QueryEntityError;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::math::{vec2, Vec2};
-use bevy::prelude::{ButtonInput, Camera2dBundle, Color, ColorMaterial, Commands, Component, EventReader, KeyCode, LightGizmoColor, Mesh, MeshBuilder, Plugin, Quat, Query, Res, ResMut, Transform, Triangle2d, Vec3, With};
+use bevy::prelude::{BuildChildren, ButtonInput, Camera2dBundle, Color, ColorMaterial, Commands, Component, EventReader, GlobalTransform, KeyCode, LightGizmoColor, Mesh, MeshBuilder, Parent, Plugin, Quat, Query, Rectangle, Res, ResMut, Transform, Triangle2d, Vec3, With};
 use bevy::render::mesh::CircleMeshBuilder;
 use bevy::sprite::{MaterialMesh2dBundle, Mesh2dHandle};
 use bevy::time::{Time, Timer};
+use bevy::utils::default;
 
 pub fn run() {
     App::new()
@@ -41,24 +42,25 @@ fn add_player(
     //
     commands.spawn(Camera2dBundle::default());
 
-    // rectangle shape
-    //
     let shape = Mesh2dHandle(meshes.add(Triangle2d::new(
         Vec2::Y * 10.0,
         Vec2::new(-5.0, -10.0),
         Vec2::new(5.0, -10.0),
     )));
-
-    // color
-    let color = Color::WHITE;
-
-    // generate rectangle
-    //
-    commands.spawn((MaterialMesh2dBundle{
+    let ship = commands.spawn((MaterialMesh2dBundle{
         mesh: shape,
-        material: materials.add(color),
+        material: materials.add(Color::WHITE),
         ..Default::default()
-    }, Ship{speed: 0.0, rotate_speed: 1.0, velocity: false}));
+    }, Ship{speed: 0.0, rotate_speed: 1.0, velocity: false})).id();
+
+    let thrust_shape = Mesh2dHandle(meshes.add(Rectangle::new(10.0, 5.0)));
+    let thrust = commands.spawn(MaterialMesh2dBundle {
+        mesh: thrust_shape,
+        material: materials.add(Color::WHITE),
+        transform: Transform::from_xyz(0.0, -12.0, 0.0),
+        ..Default::default()
+    }).id();
+    commands.entity(ship).add_child(thrust);
 }
 
 fn move_direction(keyboard: Res<ButtonInput<KeyCode>>, mut query: Query<&mut Ship>) {
